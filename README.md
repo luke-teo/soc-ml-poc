@@ -149,10 +149,21 @@ Base Score: 50%
 
 **Step 4 - Result**: The system determines with 90% confidence that `john.doe@company.com` was using `192.168.1.100` when the SQL injection occurred.
 
-## 🚀 Quick Start
+## 🚀 How to Run the Project
 
-### 1. Start Infrastructure Services
+### Prerequisites
+- **Docker & Docker Compose** - For infrastructure services
+- **Go 1.21+** - For the backend server
+- **Node.js 18+** - For the React dashboard
+- **Git** - For version control
 
+### Step 1: Clone and Setup
+```bash
+git clone <your-repo-url>
+cd soc-ml
+```
+
+### Step 2: Start Infrastructure Services
 ```bash
 cd server
 docker-compose up -d
@@ -160,217 +171,205 @@ docker-compose up -d
 
 This starts:
 - **Loki** (port 3100) - Log storage and querying
-- **PostgreSQL** (port 5432) - Analysis results storage
-- **Redis** (port 6379) - Task queue
+- **PostgreSQL** (port 5432) - Analysis results storage  
+- **Redis** (port 6379) - Task queue for async processing
 - **Grafana** (port 3000) - Optional log visualization
 
-### 2. Start the Backend Server
+**Wait 30 seconds** for services to fully initialize.
 
+### Step 3: Start the Backend Server
 ```bash
-cd server
+# In the server directory
 go mod tidy
 go run *.go
 ```
 
-The server will:
-- Start HTTP API on port 8080
-- Connect to PostgreSQL and create tables
-- Begin generating mock alerts every 30 seconds
-- Process alerts through the correlation engine
+You should see:
+```
+2024/01/15 10:30:00 Starting server on :8080
+2024/01/15 10:30:00 Starting mock data generator...
+2024/01/15 10:30:30 Generated mock alert: 1705312230123 (Source: aws_waf, Severity: high)
+```
 
-### 3. Start the Web Dashboard
-
+### Step 4: Start the Frontend Dashboard
 ```bash
+# In a new terminal
 cd client
 npm install
 npm start
 ```
 
-The React dashboard will:
-- Start on port 3000
-- Connect to the backend API
-- Display real-time alerts and analysis results
-- Show correlation visualizations and charts
+The React development server will start on port 3000.
 
-### 4. Access the Dashboard
-
+### Step 5: Access the Dashboard
 Open your browser to: **http://localhost:3000**
 
-## 📊 Dashboard Features
+You'll see:
+- 📊 **Real-time metrics** at the top
+- 🚨 **Live alert feed** on the left (new alerts every 10 seconds)
+- 📈 **Analysis results** on the right (click "View Analysis" on any alert)
 
-### Real-Time Alert Monitoring
-- **Live Alert Feed**: New alerts appear every 10 seconds
-- **Status Tracking**: Watch alerts transition from "analyzing" to "completed"
-- **Source Identification**: Visual icons for different security systems
-- **Severity Badges**: Color-coded severity levels (high, medium, low)
+## 🎮 Testing the System
 
-### Analysis Visualization
-- **Correlation Details**: User-to-IP mappings with confidence scores
-- **Processing Metrics**: Analysis time and correlation statistics
-- **Interactive Charts**: Bar charts and pie charts for data visualization
-- **Entity Tracking**: Lists of involved users and IP addresses
+### Automatic Demo Mode
+The system automatically generates realistic mock alerts every 10 seconds, simulating:
+- AWS WAF SQL injection attempts
+- Azure WAF XSS attacks  
+- Deep Security file modifications
+- Various severity levels and sources
 
-### Key Metrics Dashboard
-- **Total Alerts**: Running count of processed alerts
-- **High Severity**: Count of critical security events
-- **Correlations Found**: Number of user-IP correlations discovered
-- **Average Processing Time**: Performance metrics
-
-## 🔧 API Endpoints
-
-### Submit Alert for Analysis
+### Manual Testing
+Submit a custom alert:
 ```bash
-POST http://localhost:8080/alerts
-Content-Type: application/json
-
-{
-  "source": "aws_waf",
-  "severity": "high", 
-  "message": "Suspicious activity detected",
-  "project_id": "demo-project-1",
-  "raw_data": {
-    "clientIP": "192.168.1.100",
-    "uri": "/api/login"
-  }
-}
-```
-
-### Get Analysis Results
-```bash
-GET http://localhost:8080/analysis/{alert_id}
-```
-
-### Health Check
-```bash
-GET http://localhost:8080/health
-```
-
-## 🧠 Correlation Intelligence
-
-### User-to-IP Correlation Methods
-
-1. **Direct Correlation** (🎯): Same log contains both email and IP
-   - Confidence: 90%
-   - Most reliable correlation type
-
-2. **Time Proximity** (⏰): Logs with emails and IPs within 5-minute windows
-   - Confidence: 50-80% based on time distance
-   - Accounts for user activity patterns
-
-3. **Historical Correlation** (📊): Previously established user-IP relationships
-   - Stored in database for future reference
-   - Builds knowledge over time
-
-### Confidence Scoring Factors
-
-- **Time Proximity**: Closer timestamps = higher confidence
-- **Same Company/Host**: Matching company codes boost confidence  
-- **Source Diversity**: Multiple source systems increase correlation score
-- **Historical Validation**: Previous correlations strengthen confidence
-
-## 🎯 Supported Log Sources
-
-- **🛡️ AWS WAF**: Amazon Web Application Firewall logs
-- **🔷 Azure WAF**: Microsoft Azure Web Application Firewall logs  
-- **☁️ Akamai WAF**: Akamai Web Application Firewall logs
-- **🔒 Deep Security**: Trend Micro Deep Security system logs
-- **🛡️ AWS GuardDuty**: Amazon GuardDuty threat detection alerts
-
-## 📈 Sample Analysis Result
-
-```json
-{
-  "alert_id": "1705312215123456789",
-  "project_id": "demo-project-1",
-  "user_correlations": [
-    {
-      "user_identifier": "user@example.com",
-      "ip_address": "192.168.1.100", 
-      "confidence_score": 0.85,
-      "correlation_type": "time_proximity",
-      "source_systems": ["aws_waf", "deep_security"]
+curl -X POST http://localhost:8080/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "aws_waf",
+    "severity": "high",
+    "message": "Suspicious SQL injection detected",
+    "project_id": "test-project",
+    "raw_data": {
+      "clientIP": "192.168.1.100",
+      "user_email": "test@company.com",
+      "uri": "/api/users"
     }
-  ],
-  "enrichment_data": {
-    "correlation_stats": {
-      "total_logs_analyzed": 15,
-      "user_correlations_found": 3,
-      "correlation_score": 0.72
-    },
-    "involved_users": ["user@example.com", "admin@company.com"],
-    "involved_ips": ["192.168.1.100", "10.0.0.50"]
-  },
-  "processing_time_ms": 45
-}
+  }'
 ```
 
-## 🛠️ Development
+### What You'll See
+1. **Alert appears** in the dashboard with "analyzing" status
+2. **Analysis completes** in 2-5 seconds, status changes to "completed"
+3. **Click "View Analysis"** to see:
+   - User-to-IP correlations with confidence scores
+   - Processing time and statistics
+   - Interactive charts showing correlation patterns
+   - Lists of involved users and IP addresses
 
-### Backend Development
-```bash
-cd server
-go run *.go
-```
+## 📊 Understanding the Dashboard
 
-### Frontend Development
-```bash
-cd client
-npm start
-```
+### Stats Cards (Top Row)
+- **Total Alerts**: Running count of all processed alerts
+- **High Severity**: Count of critical security events
+- **Correlations Found**: Number of user-IP relationships discovered
+- **Avg Processing Time**: How fast the system analyzes alerts
 
-### Adding New Log Sources
+### Alert Feed (Left Panel)
+- **Live indicator**: Green dot shows real-time updates
+- **Source icons**: Visual identification of security systems
+- **Severity badges**: Color-coded priority levels
+- **Status tracking**: Watch alerts progress from analyzing → completed
 
-1. Update `server/normalizer.go` with new source detection logic
-2. Add field mappings for the new log format
-3. Test with sample logs from the new source
-4. Update the client dashboard icons and labels
+### Analysis Results (Right Panel)
+- **Summary metrics**: Logs analyzed, correlation score, processing time
+- **User correlations**: Detailed user-to-IP mappings with confidence
+- **Charts**: Visual representation of correlation patterns
+- **Entity lists**: All users and IPs involved in the incident
+
+## 🔧 Supported Log Sources
+
+The system can normalize and correlate logs from:
+
+### Cloud WAF Systems
+- **🛡️ AWS WAF**: Amazon Web Application Firewall
+- **🔷 Azure WAF**: Microsoft Azure Web Application Firewall  
+- **☁️ Akamai WAF**: Akamai Edge Security
+
+### Security Systems  
+- **🔒 Deep Security**: Trend Micro endpoint protection
+- **🛡️ AWS GuardDuty**: Amazon threat detection service
+
+### Log Format Examples
+Each system provides different information:
+- **WAF logs**: User emails, request details, geographic data
+- **System logs**: IP addresses, file access, process information
+- **Security alerts**: Threat classifications, risk scores
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Database connection failed**: Ensure PostgreSQL is running via Docker
-2. **Redis connection failed**: Check Redis service status
-3. **Frontend can't connect**: Verify backend is running on port 8080
-4. **No correlations found**: Check that logs contain both user identifiers and IP addresses
+**"Database connection failed"**
+```bash
+# Check if PostgreSQL is running
+docker-compose ps
+# Restart if needed
+docker-compose restart postgres
+```
 
-### Logs and Debugging
+**"No correlations found"**
+- Ensure logs contain both user identifiers AND IP addresses
+- Check that timestamps are within the 15-minute analysis window
+- Verify log normalization is extracting fields correctly
 
-- **Backend logs**: Check terminal running `go run *.go`
-- **Frontend logs**: Check browser developer console
-- **Database queries**: Monitor PostgreSQL logs via Docker
-- **Redis tasks**: Check Redis CLI for task queue status
+**"Frontend won't load"**
+```bash
+# Check if backend is running
+curl http://localhost:8080/health
+# Should return: {"status":"healthy"}
+```
+
+**"Alerts not appearing"**
+- Mock alerts generate every 10 seconds automatically
+- Check browser console for JavaScript errors
+- Verify the proxy setting in `client/package.json`
+
+### Performance Tuning
+
+For high-volume environments:
+- **Increase worker concurrency** in `asynq.Config{Concurrency: 20}`
+- **Adjust analysis window** from ±15 minutes to ±5 minutes for faster processing
+- **Add database indexes** for frequently queried fields
+- **Scale horizontally** with multiple server instances
 
 ## 🚀 Production Deployment
 
 ### Backend Scaling
-- Deploy multiple Go server instances behind a load balancer
-- Use managed PostgreSQL (RDS, Cloud SQL)
-- Deploy Redis cluster for high availability
-- Add monitoring with Prometheus and Grafana
+```bash
+# Build optimized binary
+go build -o soc-ml-server *.go
+
+# Deploy with environment variables
+export DB_HOST=your-postgres-host
+export REDIS_HOST=your-redis-host
+./soc-ml-server
+```
 
 ### Frontend Deployment
-- Build optimized React bundle: `npm run build`
-- Deploy to CDN (Cloudflare, AWS CloudFront)
-- Configure environment variables for API endpoints
-- Enable HTTPS and security headers
+```bash
+# Build production bundle
+npm run build
+
+# Deploy to CDN or static hosting
+# Configure API_URL environment variable
+```
 
 ### Security Considerations
-- Implement proper API authentication (JWT, OAuth)
-- Add request rate limiting and throttling
-- Enable CORS for specific domains only
-- Implement proper input validation and sanitization
+- **Authentication**: Implement JWT or OAuth for API access
+- **Rate limiting**: Prevent API abuse with request throttling  
+- **HTTPS**: Enable TLS for all communications
+- **Input validation**: Sanitize all incoming log data
+- **Database security**: Use connection pooling and prepared statements
 
-## 📋 Next Steps
+## 📈 Next Steps
 
-1. **🔐 Authentication**: Implement user authentication and authorization
-2. **📊 Advanced ML**: Add machine learning models for anomaly detection
-3. **🔔 Alerting**: Integrate with notification systems (Slack, PagerDuty)
-4. **📱 Mobile**: Create mobile-responsive dashboard
-5. **🔍 Search**: Add advanced search and filtering capabilities
-6. **📈 Reporting**: Generate automated security reports
-7. **🌐 Multi-tenancy**: Enhanced project isolation and access controls
+### Immediate Improvements
+1. **🔐 Authentication**: Add user login and role-based access
+2. **🔔 Alerting**: Integrate with Slack, PagerDuty, or email notifications
+3. **📱 Mobile**: Make dashboard responsive for mobile devices
+4. **🔍 Search**: Add filtering and search capabilities
+
+### Advanced Features
+1. **🤖 Machine Learning**: Implement anomaly detection algorithms
+2. **📊 Advanced Analytics**: Add trend analysis and predictive modeling
+3. **🌐 Multi-tenancy**: Support multiple organizations with data isolation
+4. **📈 Reporting**: Generate automated security reports and dashboards
+
+### Integration Options
+1. **SIEM Integration**: Connect with Splunk, QRadar, or Sentinel
+2. **Threat Intelligence**: Enrich with external threat feeds
+3. **Incident Response**: Integrate with ticketing systems
+4. **Compliance**: Add audit trails and compliance reporting
 
 ## 📄 License
 
-This project is a proof-of-concept for log correlation and analysis systems. 
+This project is a proof-of-concept for log correlation and analysis systems. Use and modify according to your organization's needs. 
