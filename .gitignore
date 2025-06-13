@@ -1,0 +1,90 @@
+# Root level gitignore for SOC ML project
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Docker volumes (if running from root)
+postgres_data/
+grafana_data/
+loki_data/
+
+# Build artifacts
+dist/
+build/
+
+# Documentation build
+docs/_build/
+
+# Local development
+local/
+dev/
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# IDE specific files
+.project
+.classpath
+.settings/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#* 

@@ -2,21 +2,152 @@
 
 A comprehensive system for correlating logs across multiple security systems and performing automated analysis when alerts are triggered, featuring a real-time web dashboard.
 
-## 🏗️ Project Structure
+## 🎯 What This System Solves
+
+In modern cybersecurity, organizations use multiple security tools that generate logs independently:
+- **Cloud WAF logs** contain user emails but limited IP information
+- **System logs** contain IP addresses but no user identification
+- **Security alerts** trigger from different sources at different times
+
+**The Challenge**: When a security alert occurs, analysts need to quickly understand:
+- Which user was involved?
+- What other systems were affected?
+- Are there related activities across different security tools?
+
+**Our Solution**: Automatically correlate logs across different sources to build a complete picture of security events, connecting user identities with network activities through intelligent time-based analysis.
+
+## 🏗️ System Architecture
 
 ```
-soc-ml/
-├── server/                 # Go backend API
-│   ├── *.go               # Go source files
-│   ├── go.mod             # Go dependencies
-│   ├── docker-compose.yml # Infrastructure services
-│   └── loki-config.yaml   # Loki configuration
-├── client/                # React web dashboard
-│   ├── src/               # React source files
-│   ├── public/            # Static assets
-│   └── package.json       # Node.js dependencies
-└── README.md              # This file
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Alert Source  │───▶│  Alert Processor │───▶│ Log Correlation │
+│ (WAF, Security) │    │   (HTTP Server)  │    │    Engine       │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │                        │
+                                ▼                        ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│     Loki        │◀───│   Log Fetcher    │◀───│   Normalizer    │
+│   (Log Store)   │    │  (LogQL Client)  │    │    Engine       │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │                        │
+                                ▼                        ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   PostgreSQL    │◀───│ Analysis Results │◀───│  Enrichment     │
+│   (Results)     │    │     Storage      │    │    Engine       │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                                ▼
+┌─────────────────┐    ┌──────────────────┐
+│  React Dashboard│◀───│   REST API       │
+│   (Frontend)    │    │   (Chi Router)   │
+└─────────────────┘    └──────────────────┘
 ```
+
+### Core Components
+
+1. **Alert Processor** - Receives security alerts via HTTP API
+2. **Log Fetcher** - Queries Grafana Loki for logs within ±15 minute windows
+3. **Log Normalizer** - Extracts common fields from different log formats
+4. **Correlation Engine** - Builds user-to-IP relationships using multiple methods
+5. **Enrichment Engine** - Adds context and statistics to analysis results
+6. **React Dashboard** - Real-time visualization of alerts and correlations
+
+## 🧠 How Correlation Works (Explained Simply)
+
+### The Problem: Connecting the Dots
+
+Imagine you're a detective investigating a case:
+- **Witness A** saw someone with a red car at 2:00 PM
+- **Witness B** saw "John Smith" near the scene at 2:05 PM
+- **Question**: Was John Smith driving the red car?
+
+This is exactly what our system does with security logs, but instead of witnesses, we have different security systems, and instead of cars and names, we have IP addresses and email addresses.
+
+### Our Correlation Methods
+
+#### 1. 🎯 Direct Correlation (Confidence: 90%)
+**What it is**: The same log entry contains both a user email and an IP address.
+
+**Example**:
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "user_email": "john.doe@company.com",
+  "client_ip": "192.168.1.100",
+  "action": "login_attempt"
+}
+```
+
+**Why it's reliable**: When one system captures both pieces of information simultaneously, we can be very confident they're related.
+
+#### 2. ⏰ Time Proximity Correlation (Confidence: 50-80%)
+**What it is**: We find logs with emails and logs with IP addresses that occur close together in time.
+
+**Example**:
+- **2:00 PM**: AWS WAF log shows `john.doe@company.com` accessing `/login`
+- **2:02 PM**: Deep Security log shows suspicious activity from `192.168.1.100`
+
+**The Logic**: If these events happen within a few minutes of each other, there's a good chance the same person is involved.
+
+**Confidence Factors**:
+- **1 minute apart**: 80% confidence
+- **5 minutes apart**: 60% confidence  
+- **15 minutes apart**: 50% confidence
+
+#### 3. 📊 Historical Correlation (Confidence: Variable)
+**What it is**: We remember previous correlations and use them to strengthen new ones.
+
+**Example**: If we've seen `john.doe@company.com` and `192.168.1.100` together multiple times before, we're more confident when we see them again.
+
+### Confidence Scoring Algorithm
+
+Our system calculates a confidence score (0-100%) for each correlation:
+
+```
+Base Score = 50%
+
++ Time Proximity Bonus:
+  - Same minute: +30%
+  - Within 5 minutes: +20%
+  - Within 15 minutes: +10%
+
++ Context Bonus:
+  - Same company/host: +20%
+  - Same geographic location: +10%
+
++ Historical Bonus:
+  - Previously seen together: +15%
+  - Multiple source confirmation: +10%
+
+Final Score = min(100%, Base + All Bonuses)
+```
+
+### Real-World Example
+
+**Scenario**: A SQL injection alert triggers at 2:15 PM
+
+**Step 1 - Log Collection**: System queries all logs from 2:00 PM to 2:30 PM
+```
+2:10 PM - Azure WAF: john.doe@company.com accessed /admin
+2:12 PM - System Log: 192.168.1.100 attempted file access
+2:15 PM - AWS WAF: SQL injection blocked from 192.168.1.100
+2:18 PM - Deep Security: Suspicious process on server-01
+```
+
+**Step 2 - Correlation Analysis**:
+- **Found**: `john.doe@company.com` (2:10 PM) and `192.168.1.100` (2:12 PM)
+- **Time Gap**: 2 minutes → High confidence
+- **Pattern**: User login followed by suspicious activity → Likely related
+
+**Step 3 - Confidence Calculation**:
+```
+Base Score: 50%
++ Time proximity (2 min): +25%
++ Same session pattern: +15%
+= 90% confidence
+```
+
+**Step 4 - Result**: The system determines with 90% confidence that `john.doe@company.com` was using `192.168.1.100` when the SQL injection occurred.
 
 ## 🚀 Quick Start
 

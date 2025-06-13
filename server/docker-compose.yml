@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Loki for log storage
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - soc-network
+
+  # PostgreSQL for analysis results and correlations
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: soc_analysis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - soc-network
+
+  # Redis for task queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - soc-network
+
+  # Grafana for visualization (optional)
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - soc-network
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+
+networks:
+  soc-network:
+    driver: bridge
